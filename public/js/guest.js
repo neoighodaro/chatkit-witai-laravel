@@ -81,7 +81,7 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ 	return __webpack_require__(__webpack_require__.s = 1);
 /******/ })
 /************************************************************************/
 /******/ ({
@@ -36912,44 +36912,6 @@ module.exports = function(module) {
 
 /***/ }),
 
-/***/ "./resources/js/app.js":
-/*!*****************************!*\
-  !*** ./resources/js/app.js ***!
-  \*****************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-/**
- * First we will load all of this project's JavaScript dependencies which
- * includes Vue and other libraries. It is a great starting point when
- * building robust, powerful web applications using Vue and Laravel.
- */
-__webpack_require__(/*! ./bootstrap */ "./resources/js/bootstrap.js");
-
-__webpack_require__(/*! ./support */ "./resources/js/support.js"); // window.Vue = require('vue');
-
-/**
- * The following block of code may be used to automatically register your
- * Vue components. It will recursively scan this directory for the Vue
- * components and automatically register them with their "basename".
- *
- * Eg. ./components/ExampleComponent.vue -> <example-component></example-component>
- */
-// const files = require.context('./', true, /\.vue$/i);
-// files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default));
-// Vue.component('example-component', require('./components/ExampleComponent.vue').default);
-
-/**
- * Next, we will create a fresh Vue application instance and attach it to
- * the page. Then, you may begin adding components to this application
- * or customize the JavaScript scaffolding to fit your unique needs.
- */
-// const app = new Vue({
-//     el: '#app',
-// });
-
-/***/ }),
-
 /***/ "./resources/js/bootstrap.js":
 /*!***********************************!*\
   !*** ./resources/js/bootstrap.js ***!
@@ -37008,10 +36970,10 @@ if (token) {
 
 /***/ }),
 
-/***/ "./resources/js/support.js":
-/*!*********************************!*\
-  !*** ./resources/js/support.js ***!
-  \*********************************/
+/***/ "./resources/js/guest.js":
+/*!*******************************!*\
+  !*** ./resources/js/guest.js ***!
+  \*******************************/
 /*! no exports provided */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
@@ -37019,110 +36981,124 @@ if (token) {
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _pusher_chatkit_client__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @pusher/chatkit-client */ "./node_modules/@pusher/chatkit-client/dist/web/chatkit.js");
 /* harmony import */ var _pusher_chatkit_client__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_pusher_chatkit_client__WEBPACK_IMPORTED_MODULE_0__);
-
-window.PusherChatManager = new _pusher_chatkit_client__WEBPACK_IMPORTED_MODULE_0__["ChatManager"]({
-  userId: 'admin',
-  instanceLocator: "v1:us1:6929277c-3fa5-46a1-9803-c715ac99f533",
-  tokenProvider: new _pusher_chatkit_client__WEBPACK_IMPORTED_MODULE_0__["TokenProvider"]({
-    url: '/chatkit/authenticate'
-  })
-});
-PusherChatManager.connect().then(function (currentUser) {
-  var currentRoomId; // ----------------------------------------------------------------------
-  // Add the list of rooms to the sidebar on the right of the dashboard
-  // ----------------------------------------------------------------------
-
-  for (var index = 0; index < currentUser.rooms.length; index++) {
-    var room = currentUser.rooms[index];
-    $('#rooms').append("<li class=\"nav-item\">\n                <a data-room-id=\"".concat(room.id, "\" class=\"nav-link\" href=\"#\">\n                    ").concat(room.name, "\n                </a>\n            </li>"));
-  } // ----------------------------------------------------------------------
-  // On click of the chat room name, load the messages for the chatroom
-  // ----------------------------------------------------------------------
+__webpack_require__(/*! ./bootstrap */ "./resources/js/bootstrap.js");
 
 
-  $('#rooms').on('click', 'li', function (_ref) {
-    var target = _ref.target;
 
-    var _$$data = $(target).data(),
-        roomId = _$$data.roomId;
+(function () {
+  var chat = {};
+  var roomId;
+  var currentUser;
+  var chatPage = $(document);
+  chatPage.ready(function () {
+    var chatWindow = $('.chatbubble');
+    var chatHeader = chatWindow.find('.unexpanded');
+    var chatBody = chatWindow.find('.chat-window');
 
-    var roomName = $(target).text();
+    var showAppropriateChatWindow = function showAppropriateChatWindow() {
+      if (chat.name && chat.email) {
+        return loadChatMessages();
+      }
+
+      chatBody.find('.chats').removeClass('active');
+      chatBody.find('.login-screen').addClass('active');
+    };
+
+    var toggleChatWindow = function toggleChatWindow() {
+      chatWindow.toggleClass('opened');
+      chatHeader.find('.title').text(chatWindow.hasClass('opened') ? 'Minimize' : 'Chat with Support');
+    };
+
+    var loadChatMessages = function loadChatMessages() {
+      chatBody.find('.chats').addClass('active');
+      chatBody.find('.login-screen').removeClass('active'); // Connect
+
+      window.PusherChatManager = new _pusher_chatkit_client__WEBPACK_IMPORTED_MODULE_0__["ChatManager"]({
+        userId: chat.id,
+        instanceLocator: "v1:us1:6929277c-3fa5-46a1-9803-c715ac99f533",
+        tokenProvider: new _pusher_chatkit_client__WEBPACK_IMPORTED_MODULE_0__["TokenProvider"]({
+          url: '/chatkit/authenticate'
+        })
+      });
+      PusherChatManager.connect().then(function (user) {
+        currentUser = user;
+        chatBody.find('.loader-wrapper').hide();
+        chatBody.find('.input, .messages').show();
+        currentUser.subscribeToRoomMultipart({
+          messageLimit: 100,
+          roomId: roomId = currentUser.rooms[0].id,
+          hooks: {
+            onMessage: function onMessage(message) {
+              return parseMessage(message);
+            }
+          }
+        });
+      });
+    };
+
+    var logIntoChatSession = function logIntoChatSession(evt) {
+      var name = $('#fullname').val();
+      var email = $('#email').val();
+      evt.preventDefault();
+      chatBody.find('#loginScreenForm input, #loginScreenForm button').attr('disabled', true);
+      axios.post('/chatkit/new', {
+        name: name,
+        email: email
+      }).then(function (res) {
+        chat = {
+          id: res.data.id,
+          name: name,
+          email: email
+        };
+        showAppropriateChatWindow();
+      });
+    };
 
     var parseMessage = function parseMessage(message) {
       var msg = '';
 
-      for (var _index = 0; _index < message.parts.length; _index++) {
-        var part = message.parts[_index];
+      for (var index = 0; index < message.parts.length; index++) {
+        var part = message.parts[index];
 
         if (part.partType === 'inline') {
           msg += part.payload.content;
         }
       }
 
-      $('#chat-msgs').prepend("<tr>\n                <td>\n                    <div class=\"sender\">\n                        ".concat(message.senderId, " @ <span class=\"date\">").concat(message.createdAt, "</span>\n                    </div>\n                    <div class=\"message\">").concat(msg, "</div>\n                </td>\n            </tr>"));
+      chatBody.find('ul.messages').append("<li class=\"clearfix message ".concat(message.senderId === 'admin' ? 'support' : 'user', "\">\n                    <div class=\"sender\">").concat(message.senderId, "</div>\n                    <div class=\"message\">").concat(msg, "</div>\n                </li>"));
+      chatBody.scrollTop(chatBody[0].scrollHeight);
     };
 
-    if (roomId) {
-      $('#chat-msgs').html('') && $('.response').show();
-      $('#room-title').text("Room: ".concat(roomName));
-      currentRoomId = roomId;
-      currentUser.subscribeToRoomMultipart({
-        messageLimit: 100,
-        roomId: "".concat(roomId),
-        hooks: {
-          onMessage: parseMessage
-        }
+    var sendMessageToSupport = function sendMessageToSupport(evt) {
+      evt.preventDefault();
+      var params = {
+        text: $('#newMessage').val(),
+        roomId: roomId,
+        userId: chat.id
+      };
+      axios.post('/chatkit/message', params).then(function (res) {
+        $('#newMessage').val('');
       });
-    }
-  }); // ----------------------------------------------------------------------
-  // When a message is being responded to, fire the event below
-  // ----------------------------------------------------------------------
+    }; // Start
 
-  $('#replyMessage').on('submit', function (evt) {
-    evt.preventDefault();
-    currentUser.sendSimpleMessage({
-      roomId: "".concat(currentRoomId),
-      text: $('#replyMessage input').val()
-    }).then(function () {
-      return $('#replyMessage input').val('');
-    });
+
+    showAppropriateChatWindow();
+    chatHeader.on('click', toggleChatWindow);
+    chatBody.find('#loginScreenForm').on('submit', logIntoChatSession);
+    chatBody.find('#messageSupport').on('submit', sendMessageToSupport);
   });
-});
+})();
 
 /***/ }),
 
-/***/ "./resources/sass/app.scss":
-/*!*********************************!*\
-  !*** ./resources/sass/app.scss ***!
-  \*********************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-// removed by extract-text-webpack-plugin
-
-/***/ }),
-
-/***/ "./resources/sass/guest.scss":
-/*!***********************************!*\
-  !*** ./resources/sass/guest.scss ***!
-  \***********************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-// removed by extract-text-webpack-plugin
-
-/***/ }),
-
-/***/ 0:
-/*!*****************************************************************************************!*\
-  !*** multi ./resources/js/app.js ./resources/sass/guest.scss ./resources/sass/app.scss ***!
-  \*****************************************************************************************/
+/***/ 1:
+/*!*************************************!*\
+  !*** multi ./resources/js/guest.js ***!
+  \*************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! /Users/neo/Development/Web/alfred/resources/js/app.js */"./resources/js/app.js");
-__webpack_require__(/*! /Users/neo/Development/Web/alfred/resources/sass/guest.scss */"./resources/sass/guest.scss");
-module.exports = __webpack_require__(/*! /Users/neo/Development/Web/alfred/resources/sass/app.scss */"./resources/sass/app.scss");
+module.exports = __webpack_require__(/*! /Users/neo/Development/Web/alfred/resources/js/guest.js */"./resources/js/guest.js");
 
 
 /***/ })

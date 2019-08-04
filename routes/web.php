@@ -19,4 +19,6 @@ Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
 
+Route::post('/chatkit/new', 'ChatkitController@newCustomer');
+Route::post('/chatkit/message', 'ChatkitController@sendMessage');
 Route::post('/chatkit/authenticate', 'ChatkitController@authenticate');

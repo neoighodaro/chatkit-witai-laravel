@@ -3,11 +3,12 @@
 namespace App\Providers;
 
 use App\Wit;
+use Illuminate\Contracts\Container\Container;
 use Jeylabs\Wit\Laravel\WitServiceProvider as BaseServiceProvider;
 
 class WitServiceProvider extends BaseServiceProvider
 {
-    protected function registerBindings(Application $app)
+    protected function registerBindings(Container $app)
     {
         $app->singleton('wit', function ($app) {
             return new Wit(

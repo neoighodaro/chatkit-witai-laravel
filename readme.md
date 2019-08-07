@@ -1,6 +1,9 @@
 # Natural language assistant with Chatkit, Laravel, and Wit.ai
 
-This is a demo of a real-time chat widget powered by Go and Pusher Channels. You can read about how it was created on [Pusher's blog.](#)
+This is a demo of a real-time chat widget powered by Go and Pusher Channels.
+
+https://pusher.com/tutorials/language-assistant-laravel-witai-part-1
+https://pusher.com/tutorials/language-assistant-laravel-witai-part-2
 
 ## Prerequisites
 
